@@ -28,7 +28,7 @@ namespace Orion.Launcher.World
     {
         // An adapter class to make a `Tile` reference compatible with `OTAPI.Tile.ITile`. Unfortunately, this means we
         // generate a lot of garbage, but this is the best we can really do.
-        private sealed unsafe class TileAdapter : OTAPI.Tile.ITile
+        private sealed unsafe class TileAdapter : Terraria.ITile
         {
             internal readonly Tile* _tile;
 
@@ -239,7 +239,7 @@ namespace Orion.Launcher.World
             public bool rightSlope() => IsSlope(1, 3);
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public bool HasSameSlope(OTAPI.Tile.ITile tile) => slope() == tile.slope();
+            public bool HasSameSlope(Terraria.ITile tile) => slope() == tile.slope();
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool wire() => _tile->HasRedWire;
@@ -381,7 +381,7 @@ namespace Orion.Launcher.World
                 Header = (Header & 0x9fffffff) | ((uint)frameNumber << 29);
             }
 
-            public void CopyFrom(OTAPI.Tile.ITile from)
+            public void CopyFrom(Terraria.ITile from)
             {
                 if (from is null)
                 {
@@ -394,7 +394,7 @@ namespace Orion.Launcher.World
                 *_tile = *((TileAdapter)from)._tile;
             }
 
-            public bool isTheSameAs(OTAPI.Tile.ITile compTile)
+            public bool isTheSameAs(Terraria.ITile compTile)
             {
                 if (compTile is null)
                 {

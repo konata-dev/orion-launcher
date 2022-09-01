@@ -24,7 +24,7 @@ namespace Orion.Launcher.World
 {
     internal sealed partial class OrionWorld : IWorld, IDisposable
     {
-        private sealed class TileCollection : OTAPI.Tile.ITileCollection
+        private sealed class TileCollection : ModFramework.ICollection<Terraria.ITile>
         {
             private readonly IWorld _world;
 
@@ -35,7 +35,7 @@ namespace Orion.Launcher.World
                 _world = world;
             }
 
-            public unsafe OTAPI.Tile.ITile this[int x, int y]
+            public unsafe Terraria.ITile this[int x, int y]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get => new TileAdapter(ref _world[x, y]);

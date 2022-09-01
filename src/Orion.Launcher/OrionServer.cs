@@ -92,10 +92,15 @@ namespace Orion.Launcher
             _signs = new Lazy<ISignService>(() => _kernel.Get<ISignService>());
             _world = new Lazy<IWorld>(() => _kernel.Get<IWorld>());
 
-            OTAPI.Hooks.Game.PreInitialize = PreInitializeHandler;
+            /*OTAPI.Hooks.Game.PreInitialize = PreInitializeHandler;
             OTAPI.Hooks.Game.Started = StartedHandler;
             OTAPI.Hooks.Game.PreUpdate = PreUpdateHandler;
-            OTAPI.Hooks.Command.Process = ProcessHandler;
+            OTAPI.Hooks.Command.Process = ProcessHandler;*/
+
+            On.Terraria.Main.Initialize += PreInitializeHandler;
+            On.Terraria.Main.startDedInput += StartedHandler;
+            On.Terraria.Main.Update += PreUpdateHandler;
+            OTAPI.Hooks.Main.CommandProcess += ProcessHandler;
         }
 
         public IEventManager Events => _events.Value;
@@ -118,10 +123,10 @@ namespace Orion.Launcher
         {
             _kernel.Dispose();
 
-            OTAPI.Hooks.Game.PreInitialize = null;
-            OTAPI.Hooks.Game.Started = null;
-            OTAPI.Hooks.Game.PreUpdate = null;
-            OTAPI.Hooks.Command.Process = null;
+            On.Terraria.Main.Initialize -= PreInitializeHandler;
+            On.Terraria.Main.startDedInput -= StartedHandler;
+            On.Terraria.Main.Update -= PreUpdateHandler;
+            OTAPI.Hooks.Main.CommandProcess -= ProcessHandler;
         }
 
         // =============================================================================================================
@@ -242,29 +247,34 @@ namespace Orion.Launcher
         // OTAPI hooks
         //
 
-        private void PreInitializeHandler()
+        private void PreInitializeHandler(On.Terraria.Main.orig_Initialize orig, Terraria.Main self)
         {
             var evt = new ServerInitializeEvent();
             Events.Raise(evt, _log);
+            orig(self);
         }
 
-        private void StartedHandler()
+        private void StartedHandler(On.Terraria.Main.orig_startDedInput orig)
         {
             var evt = new ServerStartEvent();
             Events.Raise(evt, _log);
+            orig();
         }
 
-        private void PreUpdateHandler(ref Microsoft.Xna.Framework.GameTime gameTime)
+        private void PreUpdateHandler(On.Terraria.Main.orig_Update orig, Terraria.Main self, Microsoft.Xna.Framework.GameTime gameTime)
         {
             var evt = ServerTickEvent.Instance;
             Events.Raise(evt, _log);
+            orig(self, gameTime);
         }
 
-        private OTAPI.HookResult ProcessHandler(string lowered, string input)
+        private void ProcessHandler(object? sender, OTAPI.Hooks.Main.CommandProcessEventArgs args)
         {
-            var evt = new ServerCommandEvent(input);
+            var evt = new ServerCommandEvent(args.Command);
             Events.Raise(evt, _log);
-            return evt.IsCanceled ? OTAPI.HookResult.Cancel : OTAPI.HookResult.Continue;
+
+            if (evt.IsCanceled)
+                args.Result = OTAPI.HookResult.Cancel;
         }
     }
 }

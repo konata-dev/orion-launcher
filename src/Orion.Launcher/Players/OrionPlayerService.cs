@@ -88,11 +88,17 @@ namespace Orion.Launcher.Players
                 _onSendModuleHandlers[(ushort)moduleId] = MakeOnSendPacketHandler(packetType);
             }
 
-            OTAPI.Hooks.Net.ReceiveData = ReceiveDataHandler;
+            /*OTAPI.Hooks.Net.ReceiveData = ReceiveDataHandler;
             OTAPI.Hooks.Net.SendBytes = SendBytesHandler;
             OTAPI.Hooks.Net.SendNetData = SendNetDataHandler;
             OTAPI.Hooks.Player.PreUpdate = PreUpdateHandler;
-            OTAPI.Hooks.Net.RemoteClient.PreReset = PreResetHandler;
+            OTAPI.Hooks.Net.RemoteClient.PreReset = PreResetHandler;*/
+
+            OTAPI.Hooks.MessageBuffer.GetData += ReceiveDataHandler;
+            OTAPI.Hooks.NetMessage.SendBytes += SendBytesHandler;
+            On.Terraria.Net.NetManager.SendData += SendNetDataHandler;
+            On.Terraria.Player.Update += PreUpdateHandler;
+            On.Terraria.RemoteClient.Reset += PreResetHandler;
 
             _events.RegisterHandlers(this, _log);
 
@@ -115,11 +121,11 @@ namespace Orion.Launcher.Players
 
         public void Dispose()
         {
-            OTAPI.Hooks.Net.ReceiveData = null;
-            OTAPI.Hooks.Net.SendBytes = null;
-            OTAPI.Hooks.Net.SendNetData = null;
-            OTAPI.Hooks.Player.PreUpdate = null;
-            OTAPI.Hooks.Net.RemoteClient.PreReset = null;
+            OTAPI.Hooks.MessageBuffer.GetData -= ReceiveDataHandler;
+            OTAPI.Hooks.NetMessage.SendBytes -= SendBytesHandler;
+            On.Terraria.Net.NetManager.SendData -= SendNetDataHandler;
+            On.Terraria.Player.Update -= PreUpdateHandler;
+            On.Terraria.RemoteClient.Reset -= PreResetHandler;
 
             _events.DeregisterHandlers(this, _log);
         }
@@ -131,27 +137,27 @@ namespace Orion.Launcher.Players
         // OTAPI hooks
         //
 
-        private OTAPI.HookResult ReceiveDataHandler(
-            Terraria.MessageBuffer buffer, ref byte packetId, ref int readOffset, ref int start, ref int length)
+        private void ReceiveDataHandler(object? sender, OTAPI.Hooks.MessageBuffer.GetDataEventArgs args)
         {
-            Debug.Assert(buffer != null);
-            Debug.Assert(buffer.whoAmI >= 0 && buffer.whoAmI < Count);
-            Debug.Assert(start >= 0 && start + length <= buffer.readBuffer.Length);
-            Debug.Assert(length > 0);
+            Debug.Assert(args.Instance != null);
+            Debug.Assert(args.Instance.whoAmI >= 0 && args.Instance.whoAmI < Count);
+            Debug.Assert(args.Start >= 0 && args.Start + args.Length <= args.Instance.readBuffer.Length);
+            Debug.Assert(args.Length > 0);
 
             // Check `_ignoreGetData` to prevent infinite loops.
             if (_ignoreGetData)
             {
-                return OTAPI.HookResult.Continue;
+                return;
             }
 
             PacketHandler handler;
-            var span = buffer.readBuffer.AsSpan(start..(start + length));
-            if (packetId == (byte)PacketId.Module)
+            var span = args.Instance.readBuffer.AsSpan(args.Start..(args.Start + args.Length));
+            if (args.PacketId == (byte)PacketId.Module)
             {
                 if (span.Length < 3)
                 {
-                    return OTAPI.HookResult.Cancel;
+                    args.Result = OTAPI.HookResult.Cancel;
+                    return;
                 }
 
                 var moduleId = Unsafe.ReadUnaligned<ushort>(ref span.At(1));
@@ -159,33 +165,31 @@ namespace Orion.Launcher.Players
             }
             else
             {
-                handler = _onReceivePacketHandlers[packetId] ?? OnReceivePacket<UnknownPacket>;
+                handler = _onReceivePacketHandlers[args.PacketId] ?? OnReceivePacket<UnknownPacket>;
             }
 
-            handler(buffer.whoAmI, span);
-            return OTAPI.HookResult.Cancel;
+            handler(args.Instance.whoAmI, span);
+            args.Result = OTAPI.HookResult.Cancel;
         }
 
-        private OTAPI.HookResult SendBytesHandler(
-            ref int playerIndex, ref byte[] data, ref int offset, ref int size,
-            ref Terraria.Net.Sockets.SocketSendCallback callback, ref object state)
+        private void SendBytesHandler(object? sender, OTAPI.Hooks.NetMessage.SendBytesEventArgs args)
         {
-            Debug.Assert(playerIndex >= 0 && playerIndex < Count);
-            Debug.Assert(data != null);
-            Debug.Assert(offset >= 0 && offset + size <= data.Length);
-            Debug.Assert(size >= 3);
+            Debug.Assert(args.RemoteClient >= 0 && args.RemoteClient < Count);
+            Debug.Assert(args.Data != null);
+            Debug.Assert(args.Offset >= 0 && args.Offset + args.Size <= args.Data.Length);
+            Debug.Assert(args.Size >= 3);
 
-            var span = data.AsSpan((offset + 2)..(offset + size));
+            var span = args.Data.AsSpan((args.Offset + 2)..(args.Offset + args.Size));
             var packetId = span.At(0);
 
             // The `SendBytes` event is only triggered for non-module packets.
             var handler = _onSendPacketHandlers[packetId] ?? OnSendPacket<UnknownPacket>;
-            handler(playerIndex, span);
-            return OTAPI.HookResult.Cancel;
+            handler(args.RemoteClient, span);
+            args.Result = OTAPI.HookResult.Cancel;
         }
 
-        private OTAPI.HookResult SendNetDataHandler(
-            Terraria.Net.NetManager manager, Terraria.Net.Sockets.ISocket socket, ref Terraria.Net.NetPacket packet)
+        private void SendNetDataHandler(On.Terraria.Net.NetManager.orig_SendData orig, Terraria.Net.NetManager self, 
+            Terraria.Net.Sockets.ISocket socket, Terraria.Net.NetPacket packet)
         {
             Debug.Assert(socket != null);
             Debug.Assert(packet.Buffer.Data != null);
@@ -212,20 +216,21 @@ namespace Orion.Launcher.Players
             // The `SendBytes` event is only triggered for module packets.
             var handler = _onSendModuleHandlers[moduleId] ?? OnSendPacket<ModulePacket<UnknownModule>>;
             handler(playerIndex, span);
-            return OTAPI.HookResult.Cancel;
         }
 
-        private OTAPI.HookResult PreUpdateHandler(Terraria.Player terrariaPlayer, ref int playerIndex)
+        private void PreUpdateHandler(On.Terraria.Player.orig_Update orig, Terraria.Player self, int playerIndex)
         {
             Debug.Assert(playerIndex >= 0 && playerIndex < Count);
 
             var player = this[playerIndex];
             var evt = new PlayerTickEvent(player);
             _events.Raise(evt, _log);
-            return evt.IsCanceled ? OTAPI.HookResult.Cancel : OTAPI.HookResult.Continue;
+
+            if (!evt.IsCanceled)
+                orig(self, playerIndex);
         }
 
-        private OTAPI.HookResult PreResetHandler(Terraria.RemoteClient remoteClient)
+        private void PreResetHandler(On.Terraria.RemoteClient.orig_Reset orig, Terraria.RemoteClient remoteClient)
         {
             Debug.Assert(remoteClient != null);
             Debug.Assert(remoteClient.Id >= 0 && remoteClient.Id < Count);
@@ -233,13 +238,14 @@ namespace Orion.Launcher.Players
             // Check if the client was active since this gets called when setting up `RemoteClient` as well.
             if (!remoteClient.IsActive)
             {
-                return OTAPI.HookResult.Continue;
+                orig(remoteClient);
+                return;
             }
 
             var player = this[remoteClient.Id];
             var evt = new PlayerQuitEvent(player);
             _events.Raise(evt, _log);
-            return OTAPI.HookResult.Continue;
+            orig(remoteClient);
         }
 
         // =============================================================================================================
@@ -271,7 +277,7 @@ namespace Orion.Launcher.Players
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static TPacket MakePacket<TPacket>(Span<byte> span) where TPacket : IPacket
         {
-            TPacket packet = default;
+            TPacket? packet = default;
 
             // `UnknownPacket` is a special case since it has no default constructor.
             if (typeof(TPacket) == typeof(UnknownPacket))

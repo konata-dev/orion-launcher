@@ -71,8 +71,11 @@ namespace Orion.Launcher.World
             // significantly while not impacting speed very much.
             Terraria.Main.tile = new TileCollection(this);
 
-            OTAPI.Hooks.World.IO.PostLoadWorld = PostLoadWorldHandler;
-            OTAPI.Hooks.World.IO.PreSaveWorld = PreSaveWorldHandler;
+            //OTAPI.Hooks.World.IO.PostLoadWorld = PostLoadWorldHandler;
+            //OTAPI.Hooks.World.IO.PreSaveWorld = PreSaveWorldHandler;
+
+            On.Terraria.IO.WorldFile.LoadWorld += PostLoadWorldHandler;
+            On.Terraria.IO.WorldFile.SaveWorld += PreSaveWorldHandler;
 
             _events.RegisterHandlers(this, _log);
         }
@@ -138,15 +141,15 @@ namespace Orion.Launcher.World
             DisposeUnmanaged();
             GC.SuppressFinalize(this);
 
-            // HACK: replace the original `Terraria.Main.tile` implementation using reflection.
-            Terraria.Main.tile =
-                (OTAPI.Tile.ITileCollection)typeof(OTAPI.Hooks).Assembly
+            // HACK: replace the original `Terraria.Main.tile` implementation using reflection. todo, actually do this lol
+            /*Terraria.Main.tile =
+                (ModFramework.ICollection<Terraria.ITile>)typeof(OTAPI.Hooks).Assembly
                     .GetType("OTAPI.Callbacks.Terraria.Collection")!
                     .GetMethod("Create")!
-                    .Invoke(null, null)!;
+                    .Invoke(null, null)!;*/
 
-            OTAPI.Hooks.World.IO.PostLoadWorld = null;
-            OTAPI.Hooks.World.IO.PreSaveWorld = null;
+            On.Terraria.IO.WorldFile.LoadWorld += PostLoadWorldHandler;
+            On.Terraria.IO.WorldFile.SaveWorld += PreSaveWorldHandler;
 
             _events.DeregisterHandlers(this, _log);
         }
@@ -179,17 +182,20 @@ namespace Orion.Launcher.World
         // OTAPI hooks
         //
 
-        private void PostLoadWorldHandler(bool loadFromCloud)
+        private void PostLoadWorldHandler(On.Terraria.IO.WorldFile.orig_LoadWorld orig, bool loadFromCloud)
         {
+            orig(loadFromCloud);
             var evt = new WorldLoadedEvent(this);
             _events.Raise(evt, _log);
         }
 
-        private OTAPI.HookResult PreSaveWorldHandler(ref bool useCloudSaving, ref bool resetTime)
+        private void PreSaveWorldHandler(On.Terraria.IO.WorldFile.orig_SaveWorld orig)
         {
             var evt = new WorldSaveEvent(this);
             _events.Raise(evt, _log);
-            return evt.IsCanceled ? OTAPI.HookResult.Cancel : OTAPI.HookResult.Continue;
+
+            if (!evt.IsCanceled)
+                orig();
         }
 
         // =============================================================================================================

@@ -176,7 +176,7 @@ namespace Orion.Launcher.Players
             packet = evt.Packet;
 
             var pool = ArrayPool<byte>.Shared;
-            var sendBuffer = pool.Rent(ushort.MaxValue);
+            var sendBuffer = pool.Rent(short.MaxValue);
             var wasSuccessful = false;
 
             try

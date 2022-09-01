@@ -57,11 +57,17 @@ namespace Orion.Launcher.Npcs
             _npcs = new WrappedReadOnlyList<OrionNpc, Terraria.NPC>(
                 Terraria.Main.npc.AsMemory(..^1), (npcIndex, terrariaNpc) => new OrionNpc(npcIndex, terrariaNpc));
 
-            OTAPI.Hooks.Npc.PreSetDefaultsById = PreSetDefaultsByIdHandler;
+            /*OTAPI.Hooks.Npc.PreSetDefaultsById = PreSetDefaultsByIdHandler;
             OTAPI.Hooks.Npc.Spawn = SpawnHandler;
             OTAPI.Hooks.Npc.PreUpdate = PreUpdateHandler;
             OTAPI.Hooks.Npc.Killed = KilledHandler;
-            OTAPI.Hooks.Npc.PreDropLoot = PreDropLootHandler;
+            OTAPI.Hooks.Npc.PreDropLoot = PreDropLootHandler;*/
+
+            On.Terraria.NPC.SetDefaults += PreSetDefaultsByIdHandler;
+            OTAPI.Hooks.NPC.Spawn += SpawnHandler;
+            On.Terraria.NPC.UpdateNPC += PreUpdateHandler;
+            OTAPI.Hooks.NPC.Killed += KilledHandler;
+            OTAPI.Hooks.NPC.DropLoot += PreDropLootHandler;
 
             _events.RegisterHandlers(this, _log);
         }
@@ -87,11 +93,11 @@ namespace Orion.Launcher.Npcs
         {
             _setDefaultsToIgnore.Dispose();
 
-            OTAPI.Hooks.Npc.PreSetDefaultsById = null;
-            OTAPI.Hooks.Npc.Spawn = null;
-            OTAPI.Hooks.Npc.PreUpdate = null;
-            OTAPI.Hooks.Npc.Killed = null;
-            OTAPI.Hooks.Npc.PreDropLoot = null;
+            On.Terraria.NPC.SetDefaults -= PreSetDefaultsByIdHandler;
+            OTAPI.Hooks.NPC.Spawn -= SpawnHandler;
+            On.Terraria.NPC.UpdateNPC -= PreUpdateHandler;
+            OTAPI.Hooks.NPC.Killed -= KilledHandler;
+            OTAPI.Hooks.NPC.DropLoot -= PreDropLootHandler;
 
             _events.DeregisterHandlers(this, _log);
         }
@@ -103,8 +109,7 @@ namespace Orion.Launcher.Npcs
         // OTAPI hooks
         //
 
-        private OTAPI.HookResult PreSetDefaultsByIdHandler(
-            Terraria.NPC terrariaNpc, ref int npcId, ref Terraria.NPCSpawnParams spawnParams)
+        private void PreSetDefaultsByIdHandler(On.Terraria.NPC.orig_SetDefaults orig, Terraria.NPC terrariaNpc, int npcId, global::Terraria.NPCSpawnParams spawnparams)
         {
             Debug.Assert(terrariaNpc != null);
 
@@ -112,7 +117,8 @@ namespace Orion.Launcher.Npcs
             if (_setDefaultsToIgnore.Value > 0)
             {
                 --_setDefaultsToIgnore.Value;
-                return OTAPI.HookResult.Continue;
+                orig(terrariaNpc, npcId, spawnparams);
+                return;
             }
 
             var npc = GetNpc(terrariaNpc);
@@ -120,7 +126,7 @@ namespace Orion.Launcher.Npcs
             _events.Raise(evt, _log);
             if (evt.IsCanceled)
             {
-                return OTAPI.HookResult.Cancel;
+                return;
             }
 
             npcId = (int)evt.Id;
@@ -128,66 +134,64 @@ namespace Orion.Launcher.Npcs
             {
                 _setDefaultsToIgnore.Value = 2;
             }
-            return OTAPI.HookResult.Continue;
+
+            orig(terrariaNpc, npcId, spawnparams);
         }
 
-        private OTAPI.HookResult SpawnHandler(ref int npcIndex)
+        private void SpawnHandler(object? sender, OTAPI.Hooks.NPC.SpawnEventArgs args)
         {
-            Debug.Assert(npcIndex >= 0 && npcIndex < Count);
+            Debug.Assert(args.Index >= 0 && args.Index < Count);
 
-            var npc = this[npcIndex];
+            var npc = this[args.Index];
             var evt = new NpcSpawnEvent(npc);
             _events.Raise(evt, _log);
             if (evt.IsCanceled)
             {
                 // To cancel the event, remove the NPC and return the failure index.
                 npc.IsActive = false;
-                npcIndex = Count;
-                return OTAPI.HookResult.Cancel;
+                args.Index = Count;
+                args.Result = OTAPI.HookResult.Cancel;
             }
-
-            return OTAPI.HookResult.Continue;
         }
 
-        private OTAPI.HookResult PreUpdateHandler(Terraria.NPC terrariaNpc, ref int npcIndex)
+        private void PreUpdateHandler(On.Terraria.NPC.orig_UpdateNPC orig, Terraria.NPC self, int npcIndex)
         {
             Debug.Assert(npcIndex >= 0 && npcIndex < Count);
 
             var npc = this[npcIndex];
             var evt = new NpcTickEvent(npc);
             _events.Raise(evt, _log);
-            return evt.IsCanceled ? OTAPI.HookResult.Cancel : OTAPI.HookResult.Continue;
+
+            if (!evt.IsCanceled)
+                orig(self, npcIndex);
         }
 
-        private void KilledHandler(Terraria.NPC terrariaNpc)
+        private void KilledHandler(object? sender, OTAPI.Hooks.NPC.KilledEventArgs args)
         {
-            Debug.Assert(terrariaNpc != null);
+            Debug.Assert(args.Npc != null);
 
-            var npc = GetNpc(terrariaNpc);
+            var npc = GetNpc(args.Npc);
             var evt = new NpcKilledEvent(npc);
             _events.Raise(evt, _log);
         }
 
-        private OTAPI.HookResult PreDropLootHandler(
-            Terraria.NPC terrariaNpc, ref int itemIndex, ref int x, ref int y, ref int width, ref int height,
-            ref int itemId, ref int stackSize, ref bool noBroadcast, ref int prefix, ref bool noGrabDelay,
-            ref bool reverseIndex)
+        private void PreDropLootHandler(object? sender, OTAPI.Hooks.NPC.DropLootEventArgs args)
         {
-            Debug.Assert(terrariaNpc != null);
+            Debug.Assert(args.Npc != null);
 
-            var npc = GetNpc(terrariaNpc);
-            var item = new ItemStack((ItemId)itemId, (ItemPrefix)prefix, (short)stackSize);
+            var npc = GetNpc(args.Npc);
+            var item = new ItemStack((ItemId)args.Type, (ItemPrefix)args.Pfix, (short)args.Stack);
             var evt = new NpcLootEvent(npc) { Item = item };
             _events.Raise(evt, _log);
             if (evt.IsCanceled)
             {
-                return OTAPI.HookResult.Cancel;
+                args.Result = OTAPI.HookResult.Cancel;
+                return;
             }
 
-            itemId = (int)evt.Item.Id;
-            stackSize = evt.Item.StackSize;
-            prefix = (int)evt.Item.Prefix;
-            return OTAPI.HookResult.Continue;
+            args.Type = (int)evt.Item.Id;
+            args.Stack = evt.Item.StackSize;
+            args.Pfix = (int)evt.Item.Prefix;
         }
 
         // Gets an `INpc` instance corresponding to the given Terraria NPC, avoiding extra allocations if possible.

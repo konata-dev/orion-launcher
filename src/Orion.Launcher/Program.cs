@@ -16,6 +16,7 @@
 // along with Orion.  If not, see <https://www.gnu.org/licenses/>.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Reflection;
@@ -98,13 +99,41 @@ namespace Orion.Launcher
             {
                 Directory.CreateDirectory("plugins");
 
+                AppDomain.CurrentDomain.AssemblyResolve += (sender, args) =>
+                {
+                    var assemblyPath = Path.Combine(Environment.CurrentDirectory, "plugins", new AssemblyName(args.Name).Name + ".dll");
+
+                    if (File.Exists(assemblyPath))
+                        return Assembly.LoadFile(assemblyPath);
+                    else
+                    {
+                        assemblyPath = Array.Find(typeof(Terraria.Program).Assembly.GetManifestResourceNames(), (x) => x.EndsWith(new AssemblyName(args.Name).Name + ".dll"));
+
+                        if (assemblyPath is null)
+                            return null;
+
+                        using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(assemblyPath);
+
+                        if (stream != null)
+                        {
+                            var bytes = new byte[stream.Length];
+                            stream.Read(bytes, 0, bytes.Length);
+                            return Assembly.Load(bytes);
+                        }
+                    }
+
+                    return null;
+                };
+
                 var server = new OrionServer(log);
+
+                //Terraria.Program.ForceLoadThread(null);
 
                 foreach (var path in Directory.EnumerateFiles("plugins", "*.dll"))
                 {
                     try
                     {
-                        var assembly = Assembly.LoadFile(path);
+                        var assembly = Assembly.LoadFile(Path.GetFullPath(path));
                         server.Load(assembly);
                     }
                     catch (BadImageFormatException)

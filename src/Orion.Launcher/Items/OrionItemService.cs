@@ -51,8 +51,11 @@ namespace Orion.Launcher.Items
             _items = new WrappedReadOnlyList<OrionItem, Terraria.Item>(
                 Terraria.Main.item.AsMemory(..^1), (itemIndex, terrariaItem) => new OrionItem(itemIndex, terrariaItem));
 
-            OTAPI.Hooks.Item.PreSetDefaultsById = PreSetDefaultsByIdHandler;
-            OTAPI.Hooks.Item.PreUpdate = PreUpdateHandler;
+            //OTAPI.Hooks.Item.PreSetDefaultsById = PreSetDefaultsByIdHandler;
+            //OTAPI.Hooks.Item.PreUpdate = PreUpdateHandler;
+
+            On.Terraria.Item.SetDefaults_int_bool += PreSetDefaultsByIdHandler;
+            On.Terraria.Item.UpdateItem += PreUpdateHandler;
         }
 
         public IItem this[int index] => _items[index];
@@ -77,8 +80,8 @@ namespace Orion.Launcher.Items
 
         public void Dispose()
         {
-            OTAPI.Hooks.Item.PreSetDefaultsById = null;
-            OTAPI.Hooks.Item.PreUpdate = null;
+            On.Terraria.Item.SetDefaults_int_bool -= PreSetDefaultsByIdHandler;
+            On.Terraria.Item.UpdateItem -= PreUpdateHandler;
         }
 
         [ExcludeFromCodeCoverage]
@@ -88,36 +91,37 @@ namespace Orion.Launcher.Items
         // OTAPI hooks
         //
 
-        private OTAPI.HookResult PreSetDefaultsByIdHandler(
-            Terraria.Item terrariaItem, ref int itemId, ref bool noMatCheck)
+        private void PreSetDefaultsByIdHandler(On.Terraria.Item.orig_SetDefaults_int_bool orig, Terraria.Item self, int type, bool noMatCheck)
         {
-            Debug.Assert(terrariaItem != null);
+            Debug.Assert(self != null);
 
-            var item = GetItem(terrariaItem);
-            var evt = new ItemDefaultsEvent(item) { Id = (ItemId)itemId };
+            var item = GetItem(self);
+            var evt = new ItemDefaultsEvent(item) { Id = (ItemId)type };
             _events.Raise(evt, _log);
             if (evt.IsCanceled)
             {
-                return OTAPI.HookResult.Cancel;
+                return;
             }
 
-            itemId = (int)evt.Id;
-            return OTAPI.HookResult.Continue;
+            type = (int)evt.Id;
+            orig(self, type, noMatCheck);
         }
 
-        private OTAPI.HookResult PreUpdateHandler(Terraria.Item terrariaItem, ref int itemIndex)
+        private void PreUpdateHandler(On.Terraria.Item.orig_UpdateItem orig, Terraria.Item self, int i)
         {
-            Debug.Assert(terrariaItem != null);
-            Debug.Assert(itemIndex >= 0 && itemIndex < Count);
+            Debug.Assert(self != null);
+            Debug.Assert(i >= 0 && i < Count);
 
             // Set `whoAmI` since this is never done in the vanilla server, and we depend on this field being set in
             // `GetItem`.
-            terrariaItem.whoAmI = itemIndex;
+            self.whoAmI = i;
 
-            var item = this[itemIndex];
+            var item = this[i];
             var evt = new ItemTickEvent(item);
             _events.Raise(evt, _log);
-            return evt.IsCanceled ? OTAPI.HookResult.Cancel : OTAPI.HookResult.Continue;
+
+            if (!evt.IsCanceled)
+                orig(self, i);
         }
 
         // Gets an `IItem` instance corresponding to the given Terraria item, avoiding extra allocations if possible.

@@ -52,8 +52,11 @@ namespace Orion.Launcher.Projectiles
                 Terraria.Main.projectile.AsMemory(..^1),
                 (projectileIndex, terrariaProjectile) => new OrionProjectile(projectileIndex, terrariaProjectile));
 
-            OTAPI.Hooks.Projectile.PreSetDefaultsById = PreSetDefaultsByIdHandler;
-            OTAPI.Hooks.Projectile.PreUpdate = PreUpdateHandler;
+            //OTAPI.Hooks.Projectile.PreSetDefaultsById = PreSetDefaultsByIdHandler;
+            //OTAPI.Hooks.Projectile.PreUpdate = PreUpdateHandler;
+
+            On.Terraria.Projectile.SetDefaults += PreSetDefaultsByIdHandler;
+            On.Terraria.Projectile.Update += PreUpdateHandler;
         }
 
         public IProjectile this[int index] => _projectiles[index];
@@ -69,7 +72,7 @@ namespace Orion.Launcher.Projectiles
             lock (_lock)
             {
                 var projectileIndex = Terraria.Projectile.NewProjectile(
-                    position.X, position.Y, velocity.X, velocity.Y, (int)id, damage, knockback);
+                    null, position.X, position.Y, velocity.X, velocity.Y, (int)id, damage, knockback);
                 Debug.Assert(projectileIndex >= 0 && projectileIndex < Count);
 
                 return this[projectileIndex];
@@ -78,8 +81,8 @@ namespace Orion.Launcher.Projectiles
 
         public void Dispose()
         {
-            OTAPI.Hooks.Projectile.PreSetDefaultsById = null;
-            OTAPI.Hooks.Projectile.PreUpdate = null;
+            On.Terraria.Projectile.SetDefaults -= PreSetDefaultsByIdHandler;
+            On.Terraria.Projectile.Update -= PreUpdateHandler;
         }
 
         [ExcludeFromCodeCoverage]
@@ -89,30 +92,32 @@ namespace Orion.Launcher.Projectiles
         // OTAPI hooks
         //
 
-        private OTAPI.HookResult PreSetDefaultsByIdHandler(Terraria.Projectile terrariaProjectile, ref int projectileId)
+        private void PreSetDefaultsByIdHandler(On.Terraria.Projectile.orig_SetDefaults orig, Terraria.Projectile self, int type)
         {
-            Debug.Assert(terrariaProjectile != null);
+            Debug.Assert(self != null);
 
-            var projectile = GetProjectile(terrariaProjectile);
-            var evt = new ProjectileDefaultsEvent(projectile) { Id = (ProjectileId)projectileId };
+            var projectile = GetProjectile(self);
+            var evt = new ProjectileDefaultsEvent(projectile) { Id = (ProjectileId)type };
             _events.Raise(evt, _log);
             if (evt.IsCanceled)
             {
-                return OTAPI.HookResult.Cancel;
+                return;
             }
 
-            projectileId = (int)evt.Id;
-            return OTAPI.HookResult.Continue;
+            type = (int)evt.Id;
+            orig(self, type);
         }
 
-        private OTAPI.HookResult PreUpdateHandler(Terraria.Projectile terrariaProjectile, ref int projectileIndex)
+        private void PreUpdateHandler(On.Terraria.Projectile.orig_Update orig, Terraria.Projectile self, int i)
         {
-            Debug.Assert(projectileIndex >= 0 && projectileIndex < Count);
+            Debug.Assert(i >= 0 && i < Count);
 
-            var projectile = this[projectileIndex];
+            var projectile = this[i];
             var evt = new ProjectileTickEvent(projectile);
             _events.Raise(evt, _log);
-            return evt.IsCanceled ? OTAPI.HookResult.Cancel : OTAPI.HookResult.Continue;
+
+            if (!evt.IsCanceled)
+                orig(self, i);
         }
 
         // Gets an `IProjectile` instance corresponding to the given Terraria projectile, avoiding extra allocations
