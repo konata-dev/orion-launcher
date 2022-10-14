@@ -23,8 +23,10 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using Destructurama;
+using IL.Terraria;
 using Orion.Core.Events.Server;
 using Orion.Launcher.Properties;
+using ReLogic.OS;
 using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.SystemConsole.Themes;
@@ -43,6 +45,9 @@ namespace Orion.Launcher
         internal static void Main(string[] args)
         {
             SetUpTerrariaLanguage();
+            //Terraria.Program.LaunchOTAPI();
+            Terraria.Program.SavePath = Platform.Get<IPathService>().GetStoragePath("Terraria"); // since launchgame in program isnt called in init, this needs to be set
+            //Terraria.Program.LaunchParameters = Terraria.Utils.ParseArguements(args);
 
             var log = SetUpLog();
             using var server = SetUpServer(log);
@@ -50,8 +55,10 @@ namespace Orion.Launcher
 
             server.Events.Raise(new ServerArgsEvent(args), log);
 
-            using var game = new Terraria.Main();
-            game.DedServ();
+            //using var game = new Terraria.Main();
+            //game.DedServ();
+            Terraria.Program.orig_LaunchGame(args);
+
 
             // Sets up the Terraria language.
             static void SetUpTerrariaLanguage()

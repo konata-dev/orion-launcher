@@ -84,7 +84,7 @@ namespace Orion.Launcher.Npcs
 
             lock (_lock)
             {
-                var npcIndex = Terraria.NPC.NewNPC((int)position.X, (int)position.Y, (int)id);
+                var npcIndex = Terraria.NPC.NewNPC(null, (int)position.X, (int)position.Y, (int)id);
                 return npcIndex >= 0 && npcIndex < Count ? this[npcIndex] : null;
             }
         }

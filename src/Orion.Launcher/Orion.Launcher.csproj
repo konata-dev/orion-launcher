@@ -10,6 +10,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="World\OrionWorld.TileAdapter.cs" />
+    <Compile Remove="World\OrionWorld.TileCollection.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="World\OrionWorld.TileAdapter.cs" />
+    <None Include="World\OrionWorld.TileCollection.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
     <PackageReference Include="Roslynator.Analyzers" Version="2.3.0">
       <PrivateAssets>all</PrivateAssets>
@@ -28,13 +38,13 @@
 
   <ItemGroup>
     <Reference Include="ModFramework">
-      <HintPath>..\..\..\Open-Terraria-API\Open-Terraria-API\OTAPI.Patcher\bin\Debug\net5.0\ModFramework.dll</HintPath>
+      <HintPath>..\..\..\Open-Terraria-API\OTAPI.Patcher\bin\Debug\net6.0\ModFramework.dll</HintPath>
     </Reference>
     <Reference Include="OTAPI">
-      <HintPath>..\..\..\Open-Terraria-API\Open-Terraria-API\OTAPI.Patcher\bin\Debug\net5.0\OTAPI.dll</HintPath>
+      <HintPath>..\..\..\Open-Terraria-API\OTAPI.Patcher\bin\Debug\net6.0\OTAPI.dll</HintPath>
     </Reference>
     <Reference Include="OTAPI.Runtime">
-      <HintPath>..\..\..\Open-Terraria-API\Open-Terraria-API\OTAPI.Patcher\bin\Debug\net5.0\OTAPI.Runtime.dll</HintPath>
+      <HintPath>..\..\..\Open-Terraria-API\OTAPI.Patcher\bin\Debug\net6.0\OTAPI.Runtime.dll</HintPath>
     </Reference>
   </ItemGroup>
 

@@ -54,7 +54,7 @@ namespace Orion.Launcher.Items
             //OTAPI.Hooks.Item.PreSetDefaultsById = PreSetDefaultsByIdHandler;
             //OTAPI.Hooks.Item.PreUpdate = PreUpdateHandler;
 
-            On.Terraria.Item.SetDefaults_int_bool += PreSetDefaultsByIdHandler;
+            On.Terraria.Item.SetDefaults_int_bool_ItemVariant += PreSetDefaultsByIdHandler;
             On.Terraria.Item.UpdateItem += PreUpdateHandler;
         }
 
@@ -70,7 +70,7 @@ namespace Orion.Launcher.Items
 
             lock (_lock)
             {
-                var itemIndex = Terraria.Item.NewItem(
+                var itemIndex = Terraria.Item.NewItem(null,
                     (int)position.X, (int)position.Y, 0, 0, (int)item.Id, item.StackSize, false, (int)item.Prefix);
                 Debug.Assert(itemIndex >= 0 && itemIndex < Count);
 
@@ -80,7 +80,7 @@ namespace Orion.Launcher.Items
 
         public void Dispose()
         {
-            On.Terraria.Item.SetDefaults_int_bool -= PreSetDefaultsByIdHandler;
+            On.Terraria.Item.SetDefaults_int_bool_ItemVariant -= PreSetDefaultsByIdHandler;
             On.Terraria.Item.UpdateItem -= PreUpdateHandler;
         }
 
@@ -91,7 +91,7 @@ namespace Orion.Launcher.Items
         // OTAPI hooks
         //
 
-        private void PreSetDefaultsByIdHandler(On.Terraria.Item.orig_SetDefaults_int_bool orig, Terraria.Item self, int type, bool noMatCheck)
+        private void PreSetDefaultsByIdHandler(On.Terraria.Item.orig_SetDefaults_int_bool_ItemVariant orig, Terraria.Item self, int type, bool noMatCheck, Terraria.GameContent.Items.ItemVariant variant)
         {
             Debug.Assert(self != null);
 
@@ -104,7 +104,7 @@ namespace Orion.Launcher.Items
             }
 
             type = (int)evt.Id;
-            orig(self, type, noMatCheck);
+            orig(self, type, noMatCheck, variant);
         }
 
         private void PreUpdateHandler(On.Terraria.Item.orig_UpdateItem orig, Terraria.Item self, int i)

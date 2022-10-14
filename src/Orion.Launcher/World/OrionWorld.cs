@@ -69,7 +69,7 @@ namespace Orion.Launcher.World
             // Replace `Terraria.Main.tile` with our own implementation which involves using the `OrionWorld` class
             // along with an adapter for the `OTAPI.Tile.ITile` interface. This cuts down on the memory usage
             // significantly while not impacting speed very much.
-            Terraria.Main.tile = new TileCollection(this);
+            //Terraria.Main.tile = new TileCollection(this);
 
             //OTAPI.Hooks.World.IO.PostLoadWorld = PostLoadWorldHandler;
             //OTAPI.Hooks.World.IO.PreSaveWorld = PreSaveWorldHandler;

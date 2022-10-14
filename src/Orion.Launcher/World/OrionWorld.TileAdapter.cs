@@ -110,7 +110,7 @@ namespace Orion.Launcher.World
             [ExcludeFromCodeCoverage]
             public int collisionType => 0;
 
-            public short sTileHeader
+            public ushort sTileHeader
             {
                 [ExcludeFromCodeCoverage]
                 get => 0;
