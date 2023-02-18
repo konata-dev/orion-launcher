@@ -15,6 +15,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Remove="OTAPI.Upcoming" />
+  </ItemGroup>
+  <ItemGroup>
     <None Include="World\OrionWorld.TileAdapter.cs" />
     <None Include="World\OrionWorld.TileCollection.cs" />
   </ItemGroup>
@@ -30,22 +33,11 @@
     <PackageReference Include="Ninject" Version="3.3.4" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="6.0.0" />
     <PackageReference Include="System.IO.Packaging" Version="4.7.0" />
+    <PackageReference Include="OTAPI.Upcoming" Version="3.1.20" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\orion-core\src\Orion.Core\Orion.Core.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="ModFramework">
-      <HintPath>..\..\..\Open-Terraria-API\OTAPI.Patcher\bin\Debug\net6.0\ModFramework.dll</HintPath>
-    </Reference>
-    <Reference Include="OTAPI">
-      <HintPath>..\..\..\Open-Terraria-API\OTAPI.Patcher\bin\Debug\net6.0\OTAPI.dll</HintPath>
-    </Reference>
-    <Reference Include="OTAPI.Runtime">
-      <HintPath>..\..\..\Open-Terraria-API\OTAPI.Patcher\bin\Debug\net6.0\OTAPI.Runtime.dll</HintPath>
-    </Reference>
   </ItemGroup>
 
   <ItemGroup>

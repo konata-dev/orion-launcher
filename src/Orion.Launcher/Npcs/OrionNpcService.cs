@@ -109,7 +109,7 @@ namespace Orion.Launcher.Npcs
         // OTAPI hooks
         //
 
-        private void PreSetDefaultsByIdHandler(On.Terraria.NPC.orig_SetDefaults orig, Terraria.NPC terrariaNpc, int npcId, global::Terraria.NPCSpawnParams spawnparams)
+        private void PreSetDefaultsByIdHandler(On.Terraria.NPC.orig_SetDefaults orig, Terraria.NPC terrariaNpc, int npcId, global::Terraria.NPCSpawnParams spawnParams)
         {
             Debug.Assert(terrariaNpc != null);
 
@@ -117,12 +117,15 @@ namespace Orion.Launcher.Npcs
             if (_setDefaultsToIgnore.Value > 0)
             {
                 --_setDefaultsToIgnore.Value;
-                orig(terrariaNpc, npcId, spawnparams);
+                orig(terrariaNpc, npcId, spawnParams);
                 return;
             }
 
             var npc = GetNpc(terrariaNpc);
-            var evt = new NpcDefaultsEvent(npc) { Id = (NpcId)npcId };
+
+            var par = new NpcSpawnParams(spawnParams.sizeScaleOverride, spawnParams.playerCountForMultiplayerDifficultyOverride, spawnParams.strengthMultiplierOverride);
+
+            var evt = new NpcDefaultsEvent(npc, par) { Id = (NpcId)npcId };
             _events.Raise(evt, _log);
             if (evt.IsCanceled)
             {
@@ -135,7 +138,7 @@ namespace Orion.Launcher.Npcs
                 _setDefaultsToIgnore.Value = 2;
             }
 
-            orig(terrariaNpc, npcId, spawnparams);
+            orig(terrariaNpc, npcId, spawnParams);
         }
 
         private void SpawnHandler(object? sender, OTAPI.Hooks.NPC.SpawnEventArgs args)
