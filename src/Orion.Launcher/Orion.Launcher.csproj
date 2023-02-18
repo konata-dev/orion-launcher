@@ -10,14 +10,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="World\OrionWorld.TileAdapter.cs" />
-    <Compile Remove="World\OrionWorld.TileCollection.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="OTAPI.Upcoming" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="World\OrionWorld.TileAdapter.cs" />
     <None Include="World\OrionWorld.TileCollection.cs" />
   </ItemGroup>
