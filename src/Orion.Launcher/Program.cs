@@ -57,7 +57,7 @@ namespace Orion.Launcher
 
             //using var game = new Terraria.Main();
             //game.DedServ();
-            Terraria.Program.LaunchGame(args);
+            Terraria.Program.orig_RunGame();
 
 
             // Sets up the Terraria language.
