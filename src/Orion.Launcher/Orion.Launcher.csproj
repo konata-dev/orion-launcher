@@ -29,15 +29,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="RailSDK.Net">
-      <HintPath>..\..\..\..\Downloads\RailSDK.Net.dll</HintPath>
-    </Reference>
-    <Reference Include="CsvHelper">
-      <HintPath>..\..\..\..\Downloads\Libraries\CsvHelper\2.0.0.0\CsvHelper.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-
-  <ItemGroup>
     <Compile Update="Properties\Resources.Designer.cs">
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
